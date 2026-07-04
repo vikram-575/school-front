@@ -14,18 +14,26 @@ export default function SuperAdminOverview() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const supabase = createClient();
-      
-      const { count: schoolsCount } = await supabase
-        .from('School')
-        .select('*', { count: 'exact', head: true });
+      try {
+        const supabase = createClient();
+        
+        const { count: schoolsCount, error } = await supabase
+          .from('School')
+          .select('*', { count: 'exact', head: true });
 
-      setStats({
-        schools: schoolsCount || 0,
-        students: 12500, // Placeholder for MVP
-        revenue: 45000,  // Placeholder for MVP
-        activeSubscriptions: schoolsCount || 0,
-      });
+        if (error) {
+          console.error("Supabase Error:", error);
+        }
+
+        setStats({
+          schools: schoolsCount || 0,
+          students: 12500, // Placeholder for MVP
+          revenue: 45000,  // Placeholder for MVP
+          activeSubscriptions: schoolsCount || 0,
+        });
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      }
     };
 
     fetchStats();
