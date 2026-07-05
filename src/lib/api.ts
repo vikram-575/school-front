@@ -1,6 +1,6 @@
 import { createClient } from './supabase';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://school-0b66.onrender.com/api";
+const API_BASE_URL = "https://school-0b66.onrender.com/api"; // Forced for production
 
 export async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const supabase = createClient();
