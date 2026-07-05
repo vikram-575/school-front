@@ -44,7 +44,8 @@ export default function LoginPage() {
       else if (roleName === "ACCOUNTANT") router.push("/dashboard/accountant");
       else router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      console.error(err);
+      setError(err.message + " | " + (err.cause?.message || "No cause") + " | " + err.stack);
     } finally {
       setLoading(false);
     }
