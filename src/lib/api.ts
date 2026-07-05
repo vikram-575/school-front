@@ -16,10 +16,15 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (err: any) {
+    throw new Error(`Fetch failed for URL ${API_BASE_URL}${endpoint}: ${err.message}`);
+  }
 
   if (!res.ok) {
     throw new Error(`API error: ${res.statusText}`);
