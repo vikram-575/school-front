@@ -58,6 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { name: "Notices", icon: Megaphone, href: "/dashboard/admin/notices" },
           { name: "Finance", icon: FileText, href: "/dashboard/admin/finance" },
           { name: "Exams", icon: FileText, href: "/dashboard/admin/exams" },
+          { name: "Reports", icon: FileText, href: "/dashboard/admin/reports" },
           { name: "Settings", icon: Settings, href: "#" },
         ];
       case "PRINCIPAL":

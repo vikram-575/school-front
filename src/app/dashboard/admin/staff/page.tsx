@@ -1,19 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/api";
-import { Briefcase, UserPlus, Users, Loader2 } from "lucide-react";
+import { Briefcase, UserPlus, Users, Loader2, Edit, Trash2 } from "lucide-react";
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    password: "", // Prototype only!
+    password: "", 
     role: "TEACHER",
     employeeId: "",
   });
@@ -21,9 +22,7 @@ export default function StaffPage() {
   const loadStaff = async () => {
     setLoading(true);
     try {
-      // Assuming users?role=TEACHER, etc. For now we fetch all except students maybe?
       const data = await fetchWithAuth("/users");
-      // Filter out SUPER_ADMIN and STUDENT in the UI or let backend do it.
       const filtered = data.filter((u: any) => u.role?.name !== "SUPER_ADMIN" && u.role?.name !== "STUDENT");
       setStaff(filtered);
     } catch (error) {
@@ -37,23 +36,59 @@ export default function StaffPage() {
     loadStaff();
   }, []);
 
+  const openEdit = (member: any) => {
+    setEditingId(member.id);
+    setFormData({
+      firstName: member.firstName,
+      lastName: member.lastName,
+      email: member.email || "",
+      phone: member.phone || "",
+      password: "", // leave empty for edit unless they want to change
+      role: member.role?.name || "TEACHER",
+      employeeId: member.employeeProfile?.employeeId || "",
+    });
+    setShowModal(true);
+  };
+
+  const openCreate = () => {
+    setEditingId(null);
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      password: "",
+      role: "TEACHER",
+      employeeId: "",
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}? This will remove their login access.`)) return;
+    try {
+      await fetchWithAuth(`/users/${id}`, { method: "DELETE" });
+      loadStaff();
+    } catch (err: any) {
+      alert("Error deleting staff: " + err.message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await fetchWithAuth("/users", {
-        method: "POST",
-        body: JSON.stringify(formData),
-      });
+      if (editingId) {
+        await fetchWithAuth(`/users/${editingId}`, {
+          method: "PUT",
+          body: JSON.stringify(formData),
+        });
+      } else {
+        await fetchWithAuth("/users", {
+          method: "POST",
+          body: JSON.stringify(formData),
+        });
+      }
       setShowModal(false);
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        password: "",
-        role: "TEACHER",
-        employeeId: "",
-      });
       loadStaff();
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -79,7 +114,7 @@ export default function StaffPage() {
         </div>
         
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 rounded-xl transition-all font-medium border border-blue-600/20"
         >
           <UserPlus className="w-4 h-4" />
@@ -96,12 +131,13 @@ export default function StaffPage() {
                 <th className="px-6 py-4 font-medium">Role</th>
                 <th className="px-6 py-4 font-medium">Email</th>
                 <th className="px-6 py-4 font-medium">Employee ID</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/50">
               {staff.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                     No staff members found.
                   </td>
                 </tr>
@@ -129,6 +165,22 @@ export default function StaffPage() {
                     <td className="px-6 py-4 text-gray-400">
                       {member.employeeProfile?.employeeId || "N/A"}
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => openEdit(member)}
+                          className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(member.id, member.firstName)}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -140,7 +192,7 @@ export default function StaffPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-2xl shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h2 className="text-2xl font-bold mb-6">Onboard New Staff</h2>
+            <h2 className="text-2xl font-bold mb-6">{editingId ? 'Edit Staff' : 'Onboard New Staff'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -164,7 +216,7 @@ export default function StaffPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
                   <input
-                    required
+                    required={!editingId}
                     type="email"
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
@@ -179,16 +231,18 @@ export default function StaffPage() {
                     className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Temporary Password</label>
-                  <input
-                    required
-                    type="password"
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
-                  />
-                </div>
+                {!editingId && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Temporary Password</label>
+                    <input
+                      required
+                      type="password"
+                      value={formData.password}
+                      onChange={e => setFormData({...formData, password: e.target.value})}
+                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Role</label>
                   <select
@@ -203,7 +257,7 @@ export default function StaffPage() {
                     <option value="ACCOUNTANT">Accountant</option>
                   </select>
                 </div>
-                <div className="col-span-2">
+                <div className={editingId ? "col-span-2" : "col-span-2"}>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Employee ID</label>
                   <input
                     required
@@ -227,7 +281,7 @@ export default function StaffPage() {
                   type="submit"
                   className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-medium shadow-lg shadow-blue-500/25"
                 >
-                  Onboard Staff
+                  {editingId ? 'Save Changes' : 'Onboard Staff'}
                 </button>
               </div>
             </form>

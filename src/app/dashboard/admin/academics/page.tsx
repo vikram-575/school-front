@@ -1,36 +1,43 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/api";
-import { BookOpen, Layers, Users, Plus, Loader2 } from "lucide-react";
+import { BookOpen, Layers, Users, Plus, Loader2, UserPlus } from "lucide-react";
 
 export default function AcademicsPage() {
   const [activeTab, setActiveTab] = useState<"classes" | "sections" | "subjects">("classes");
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Modals state
   const [showClassModal, setShowClassModal] = useState(false);
   const [showSectionModal, setShowSectionModal] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState<{ type: 'section' | 'subject', id: string } | null>(null);
 
   // Forms state
   const [newClass, setNewClass] = useState({ name: "", order: 1 });
   const [newSection, setNewSection] = useState({ name: "", classId: "" });
   const [newSubject, setNewSubject] = useState({ name: "", code: "" });
+  const [assignTeacherId, setAssignTeacherId] = useState("");
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [cls, sec, sub] = await Promise.all([
+      const [cls, sec, sub, usersData] = await Promise.all([
         fetchWithAuth("/academics/classes"),
         fetchWithAuth("/academics/sections"),
         fetchWithAuth("/academics/subjects"),
+        fetchWithAuth("/users")
       ]);
       setClasses(cls);
       setSections(sec);
       setSubjects(sub);
+      
+      const filteredStaff = usersData.filter((u: any) => u.role?.name !== "SUPER_ADMIN" && u.role?.name !== "STUDENT");
+      setStaff(filteredStaff);
     } catch (error) {
       console.error(error);
     } finally {
@@ -87,7 +94,26 @@ export default function AcademicsPage() {
     }
   };
 
-  if (loading) {
+  const handleAssignTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showAssignModal) return;
+    
+    try {
+      if (showAssignModal.type === 'section') {
+        await fetchWithAuth(`/academics/sections/${showAssignModal.id}/class-teacher`, {
+          method: "PUT",
+          body: JSON.stringify({ teacherId: assignTeacherId }),
+        });
+      }
+      setShowAssignModal(null);
+      setAssignTeacherId("");
+      loadData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  if (loading && classes.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
@@ -173,8 +199,28 @@ export default function AcademicsPage() {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Users className="w-16 h-16 text-blue-500" />
               </div>
-              <h3 className="text-xl font-semibold text-white">{sec.name}</h3>
-              <p className="text-gray-400 text-sm mt-1">Class: {sec.class?.name}</p>
+              <h3 className="text-xl font-semibold text-white">{sec.class?.name} - {sec.name}</h3>
+              
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Class Teacher:</span>
+                  {sec.classTeacher ? (
+                    <span className="text-white font-medium">
+                      {sec.classTeacher.user?.firstName} {sec.classTeacher.user?.lastName}
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 italic">Unassigned</span>
+                  )}
+                </div>
+                
+                <button 
+                  onClick={() => setShowAssignModal({ type: 'section', id: sec.id })}
+                  className="w-full mt-2 py-2 flex items-center justify-center gap-2 text-sm text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg transition-colors border border-blue-500/20"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Assign Teacher
+                </button>
+              </div>
             </div>
           ))}
 
@@ -263,7 +309,7 @@ export default function AcademicsPage() {
                   value={newSection.name}
                   onChange={e => setNewSection({...newSection, name: e.target.value})}
                   className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
-                  placeholder="e.g. Section A"
+                  placeholder="e.g. A"
                 />
               </div>
               <div className="flex gap-3 mt-8">
@@ -303,8 +349,9 @@ export default function AcademicsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Subject Code (Optional)</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Subject Code</label>
                 <input
+                  required
                   value={newSubject.code}
                   onChange={e => setNewSubject({...newSubject, code: e.target.value})}
                   className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
@@ -324,6 +371,50 @@ export default function AcademicsPage() {
                   className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all font-medium shadow-lg shadow-emerald-500/25"
                 >
                   Create Subject
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Teacher Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6">
+              Assign Teacher
+            </h2>
+            <form onSubmit={handleAssignTeacher} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Select Teacher</label>
+                <select
+                  required
+                  value={assignTeacherId}
+                  onChange={e => setAssignTeacherId(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                >
+                  <option value="">Select a teacher...</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.employeeProfile?.employeeId}>
+                      {s.firstName} {s.lastName} ({s.employeeProfile?.employeeId || 'No ID'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(null)}
+                  className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-medium shadow-lg shadow-blue-500/25"
+                >
+                  Assign
                 </button>
               </div>
             </form>
