@@ -64,20 +64,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       case "PRINCIPAL":
         return [
           { name: "Overview", icon: LayoutDashboard, href: "/dashboard/principal" },
-          { name: "Academics", icon: BookOpen, href: "#" },
-          { name: "Timetable", icon: Calendar, href: "#" },
+          { name: "Academics", icon: BookOpen, href: "/dashboard/principal/academics" },
+          { name: "Timetable", icon: Calendar, href: "/dashboard/principal/timetable" },
         ];
       case "HR":
         return [
           { name: "Overview", icon: LayoutDashboard, href: "/dashboard/hr" },
-          { name: "Staff Directory", icon: Users, href: "#" },
-          { name: "Leave Management", icon: Calendar, href: "#" },
+          { name: "Staff Directory", icon: Users, href: "/dashboard/hr/staff" },
+          { name: "Leave Management", icon: Calendar, href: "/dashboard/hr/leaves" },
         ];
       case "ACCOUNTANT":
         return [
           { name: "Overview", icon: LayoutDashboard, href: "/dashboard/accountant" },
-          { name: "Invoices", icon: FileText, href: "#" },
-          { name: "Expenses", icon: Briefcase, href: "#" },
+          { name: "Finance Dashboard", icon: FileText, href: "/dashboard/accountant/finance" },
         ];
       default:
         return [
