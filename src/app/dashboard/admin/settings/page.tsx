@@ -28,14 +28,49 @@ export default function SettingsPage() {
     dailyDigest: true,
   });
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchWithAuth("/operations/settings");
+        if (data) {
+          if (data.general) setGeneral(data.general);
+          if (data.academic) setAcademic(data.academic);
+          if (data.notifications) setNotifications(data.notifications);
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    // Simulate API call to save settings
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSaving(false);
-    alert("Settings saved successfully!");
+    try {
+      await fetchWithAuth("/operations/settings", {
+        method: "PUT",
+        body: JSON.stringify({ general, academic, notifications }),
+      });
+      alert("Settings saved successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save settings.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto">

@@ -1,7 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/api";
-import { GraduationCap, UserPlus, Loader2, Edit, Trash2, Filter } from "lucide-react";
+import { GraduationCap, UserPlus, Loader2, Edit, Trash2, Filter, X, Mail, Phone, Calendar, BookOpen, Award } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Legend
+} from "recharts";
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
@@ -10,6 +22,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
 
   // Filters
   const [filterClassId, setFilterClassId] = useState("");
@@ -68,7 +81,8 @@ export default function StudentsPage() {
     setShowModal(true);
   };
 
-  const openEdit = (student: any) => {
+  const openEdit = (student: any, e: any) => {
+    e.stopPropagation();
     setEditingId(student.id);
     setFormData({
       firstName: student.firstName,
@@ -83,7 +97,8 @@ export default function StudentsPage() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string, e: any) => {
+    e.stopPropagation();
     if (!confirm(`Are you sure you want to delete ${name}?`)) return;
     try {
       await fetchWithAuth(`/users/${id}`, { method: "DELETE" });
@@ -123,37 +138,51 @@ export default function StudentsPage() {
   }
 
   // Derived filtered sections based on selected class
-  const availableSections = formData.sectionId 
-    ? sections // For simplicity in edit mode, show all or fetch by class
-    : sections;
-    
+  const availableSections = formData.sectionId ? sections : sections;
   const filterAvailableSections = filterClassId 
     ? sections.filter((s: any) => s.classId === filterClassId)
     : sections;
+
+  // Mock data for charts
+  const performanceData = [
+    { term: 'Term 1', Math: 85, Science: 78, English: 92 },
+    { term: 'Term 2', Math: 88, Science: 82, English: 90 },
+    { term: 'Mid-Term', Math: 92, Science: 89, English: 94 },
+    { term: 'Finals', Math: 95, Science: 94, English: 96 },
+  ];
+
+  const attendanceData = [
+    { month: 'Aug', present: 20, absent: 2 },
+    { month: 'Sep', present: 21, absent: 1 },
+    { month: 'Oct', present: 19, absent: 3 },
+    { month: 'Nov', present: 22, absent: 0 },
+    { month: 'Dec', present: 15, absent: 2 },
+  ];
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">
-            Student Roster
+            Student Directory & Insights
           </h1>
-          <p className="text-gray-400 mt-1">Manage enrollments and student records.</p>
+          <p className="text-gray-400 mt-1">Manage enrollments and view deep academic analytics.</p>
         </div>
         
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-xl transition-all font-medium border border-indigo-600/20"
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/25"
         >
           <UserPlus className="w-4 h-4" />
           Enroll Student
         </button>
       </div>
 
+      {/* Class Filtering */}
       <div className="flex gap-4 p-4 bg-gray-900 border border-gray-800 rounded-2xl">
         <div className="flex items-center gap-2 text-gray-400">
           <Filter className="w-4 h-4" />
-          <span className="text-sm font-medium">Filters:</span>
+          <span className="text-sm font-medium">Browse By Class:</span>
         </div>
         <select 
           value={filterClassId}
@@ -172,157 +201,213 @@ export default function StudentsPage() {
         <select 
           value={filterSectionId}
           onChange={(e) => setFilterSectionId(e.target.value)}
-          disabled={!filterClassId && sections.length > 0} // Optional constraint
+          disabled={!filterClassId && sections.length > 0} 
           className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
         >
           <option value="">All Sections</option>
           {filterAvailableSections.map((s: any) => (
-            <option key={s.id} value={s.id}>{s.name} ({s.class?.name || 'Unknown Class'})</option>
+            <option key={s.id} value={s.id}>{s.name} ({s.class?.name})</option>
           ))}
         </select>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="relative">
-          {loading && (
-            <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Side: Student List */}
+        <div className="lg:col-span-1 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-lg flex flex-col h-[70vh]">
+          <div className="p-4 border-b border-gray-800 bg-gray-900/50">
+            <h3 className="font-semibold text-white">Student Roster</h3>
+            <p className="text-xs text-gray-400">{students.length} students found</p>
+          </div>
+          <div className="overflow-y-auto flex-1 p-2 space-y-1">
+            {students.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">No students found.</div>
+            ) : (
+              students.map((student) => (
+                <div 
+                  key={student.id}
+                  onClick={() => setSelectedStudent(student)}
+                  className={`p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                    selectedStudent?.id === student.id 
+                      ? 'bg-indigo-600/20 border border-indigo-500/30 shadow-inner'
+                      : 'hover:bg-gray-800 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                      selectedStudent?.id === student.id ? 'bg-indigo-500 text-white' : 'bg-gray-800 text-gray-300'
+                    }`}>
+                      {student.firstName[0]}
+                    </div>
+                    <div>
+                      <div className={`font-medium text-sm ${selectedStudent?.id === student.id ? 'text-white' : 'text-gray-200'}`}>
+                        {student.firstName} {student.lastName}
+                      </div>
+                      <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <span>{student.studentProfile?.admissionNumber || 'No ID'}</span>
+                        {student.studentProfile?.currentSection && (
+                          <span className="text-indigo-400 font-medium">
+                            {student.studentProfile.currentSection.class?.name}-{student.studentProfile.currentSection.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={(e) => openEdit(student, e)} className="p-1.5 text-gray-500 hover:text-indigo-400 transition-colors">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={(e) => handleDelete(student.id, student.firstName, e)} className="p-1.5 text-gray-500 hover:text-red-400 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Detailed Profile & Charts */}
+        <div className="lg:col-span-2">
+          {selectedStudent ? (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Profile Header */}
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg flex items-start gap-6">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-4xl text-white font-bold shadow-lg shadow-indigo-500/25">
+                  {selectedStudent.firstName[0]}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-white">
+                      {selectedStudent.firstName} {selectedStudent.lastName}
+                    </h2>
+                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold uppercase tracking-wider">
+                      Active Student
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                      {selectedStudent.email || "No email provided"}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Phone className="w-4 h-4 text-gray-500" />
+                      {selectedStudent.phone || "No phone provided"}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Award className="w-4 h-4 text-gray-500" />
+                      Admission ID: <span className="font-mono text-indigo-400">{selectedStudent.studentProfile?.admissionNumber || "N/A"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <BookOpen className="w-4 h-4 text-gray-500" />
+                      Class: {selectedStudent.studentProfile?.currentSection ? 
+                        <span className="text-white font-medium">{selectedStudent.studentProfile.currentSection.class?.name} - {selectedStudent.studentProfile.currentSection.name}</span>
+                      : "Unassigned"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic Charts Area */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Academic Performance Chart */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-indigo-500" />
+                    Academic Progression
+                  </h3>
+                  <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={performanceData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                        <XAxis dataKey="term" stroke="#9CA3AF" tick={{fill: '#9CA3AF', fontSize: 12}} />
+                        <YAxis stroke="#9CA3AF" tick={{fill: '#9CA3AF', fontSize: 12}} domain={[0, 100]} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '0.5rem' }}
+                          itemStyle={{ fontSize: '14px' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Line type="monotone" dataKey="Math" stroke="#6366f1" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                        <Line type="monotone" dataKey="Science" stroke="#10b981" strokeWidth={3} dot={{r: 4}} />
+                        <Line type="monotone" dataKey="English" stroke="#f59e0b" strokeWidth={3} dot={{r: 4}} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Attendance Chart */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg">
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-emerald-500" />
+                    Attendance Record
+                  </h3>
+                  <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={attendanceData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                        <XAxis dataKey="month" stroke="#9CA3AF" tick={{fill: '#9CA3AF', fontSize: 12}} />
+                        <YAxis stroke="#9CA3AF" tick={{fill: '#9CA3AF', fontSize: 12}} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '0.5rem' }}
+                          cursor={{fill: '#1f2937'}}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Bar dataKey="present" name="Present Days" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                        <Bar dataKey="absent" name="Absent Days" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl flex flex-col items-center justify-center h-full min-h-[500px] text-gray-500">
+              <GraduationCap className="w-16 h-16 mb-4 opacity-20" />
+              <p>Select a student from the roster to view their detailed profile.</p>
             </div>
           )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-800/50 border-b border-gray-800 text-gray-400">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Student Name</th>
-                  <th className="px-6 py-4 font-medium">Admission No.</th>
-                  <th className="px-6 py-4 font-medium">Class & Section</th>
-                  <th className="px-6 py-4 font-medium">Email</th>
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800/50">
-                {students.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                      No students found for the selected criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  students.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-800/25 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
-                            {student.firstName[0]}
-                          </div>
-                          <div>
-                            <div className="font-medium text-white">
-                              {student.firstName} {student.lastName}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-gray-400">
-                        {student.studentProfile?.admissionNumber || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 text-gray-400">
-                        {student.studentProfile?.currentSection ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                            {student.studentProfile.currentSection.class?.name} - {student.studentProfile.currentSection.name}
-                          </span>
-                        ) : (
-                          <span className="text-gray-500 italic">Unassigned</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-gray-400">{student.email}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => openEdit(student)}
-                            className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(student.id, student.firstName)}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       </div>
 
+      {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-2xl shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h2 className="text-2xl font-bold mb-6">{editingId ? 'Edit Student' : 'Enroll New Student'}</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">{editingId ? 'Edit Student' : 'Enroll New Student'}</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">First Name</label>
-                  <input
-                    required
-                    value={formData.firstName}
-                    onChange={e => setFormData({...formData, firstName: e.target.value})}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  />
+                  <input required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Last Name</label>
-                  <input
-                    required
-                    value={formData.lastName}
-                    onChange={e => setFormData({...formData, lastName: e.target.value})}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  />
+                  <input required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Student Email</label>
-                  <input
-                    required={!editingId}
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  />
+                  <input required={!editingId} type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
                 </div>
                 {!editingId && (
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Temporary Password</label>
-                    <input
-                      required
-                      type="password"
-                      value={formData.password}
-                      onChange={e => setFormData({...formData, password: e.target.value})}
-                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                    />
+                    <input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
                   </div>
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Admission Number</label>
-                  <input
-                    required
-                    value={formData.admissionNumber}
-                    onChange={e => setFormData({...formData, admissionNumber: e.target.value})}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                    placeholder="e.g. ADM2026-001"
-                  />
+                  <input required value={formData.admissionNumber} onChange={e => setFormData({...formData, admissionNumber: e.target.value})} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" placeholder="e.g. ADM2026-001" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Assign Section</label>
-                  <select
-                    value={formData.sectionId}
-                    onChange={e => setFormData({...formData, sectionId: e.target.value})}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                  >
+                  <select value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all">
                     <option value="">-- Unassigned --</option>
                     {sections.map(s => (
                       <option key={s.id} value={s.id}>
@@ -333,18 +418,11 @@ export default function StudentsPage() {
                 </div>
               </div>
               
-              <div className="flex gap-3 mt-8 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all font-medium"
-                >
+              <div className="flex gap-3 mt-8 pt-4 border-t border-gray-800">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all font-medium">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/25"
-                >
+                <button type="submit" className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/25">
                   {editingId ? 'Save Changes' : 'Enroll Student'}
                 </button>
               </div>
